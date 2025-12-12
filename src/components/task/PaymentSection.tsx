@@ -22,6 +22,8 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
     onPaymentMethodReady?.(event.complete);
   };
 
+  const isStripeLoading = !stripe || !elements;
+
   return (
     <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
       <div className="flex items-center gap-2 mb-4">
@@ -49,48 +51,57 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           </p>
         </div>
 
-        <div className={disabled ? 'opacity-50 pointer-events-none' : ''}>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                カード情報
-              </label>
-              <div className="px-4 py-3 border border-slate-300 rounded-lg bg-white hover:border-blue-400 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 transition-all">
-                <CardElement
-                  options={{
-                    style: {
-                      base: {
-                        fontSize: '16px',
-                        color: '#0f172a',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        '::placeholder': {
-                          color: '#94a3b8',
+        {isStripeLoading ? (
+          <div className="py-8 text-center">
+            <div className="inline-block">
+              <div className="w-8 h-8 border-3 border-slate-300 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+            <p className="text-slate-600 mt-3 text-sm">決済システムを読み込み中...</p>
+          </div>
+        ) : (
+          <div className={disabled ? 'opacity-50 pointer-events-none' : ''}>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  カード情報
+                </label>
+                <div className="px-4 py-3 border border-slate-300 rounded-lg bg-white hover:border-blue-400 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 transition-all">
+                  <CardElement
+                    options={{
+                      style: {
+                        base: {
+                          fontSize: '16px',
+                          color: '#0f172a',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          '::placeholder': {
+                            color: '#94a3b8',
+                          },
+                        },
+                        invalid: {
+                          color: '#dc2626',
                         },
                       },
-                      invalid: {
-                        color: '#dc2626',
-                      },
-                    },
-                  }}
-                  onChange={handleCardChange}
-                />
+                    }}
+                    onChange={handleCardChange}
+                  />
+                </div>
+                {cardError && (
+                  <p className="text-red-600 text-sm mt-1">{cardError}</p>
+                )}
+                {isCardComplete && !cardError && (
+                  <p className="text-green-600 text-sm mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" />
+                    カード情報が正常に入力されました
+                  </p>
+                )}
               </div>
-              {cardError && (
-                <p className="text-red-600 text-sm mt-1">{cardError}</p>
-              )}
-              {isCardComplete && !cardError && (
-                <p className="text-green-600 text-sm mt-1 flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
-                  カード情報が正常に入力されました
-                </p>
-              )}
             </div>
-          </div>
 
-          <p className="text-xs text-slate-500 mt-3 text-center">
-            決済は目標未達成時のみ実行されます
-          </p>
-        </div>
+            <p className="text-xs text-slate-500 mt-3 text-center">
+              決済は目標未達成時のみ実行されます
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
