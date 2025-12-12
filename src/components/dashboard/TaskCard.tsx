@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Task } from '../../lib/supabase';
 
@@ -30,6 +31,7 @@ const statusConfig = {
 };
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
+  const navigate = useNavigate();
   const status = statusConfig[task.status];
   const StatusIcon = status.icon;
 
@@ -41,6 +43,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleViewDetails = () => {
+    navigate(`/task/${task.id}`);
   };
 
   return (
@@ -84,7 +90,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       </div>
 
       <div className="mt-4 pt-4 border-t border-slate-200">
-        <button className="w-full py-2 px-4 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
+        <button
+          onClick={handleViewDetails}
+          className="w-full py-2 px-4 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+        >
           詳細を見る
         </button>
       </div>

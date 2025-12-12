@@ -4,6 +4,7 @@ import { Landing } from './pages/Landing';
 import { Auth } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { CreateTask } from './pages/CreateTask';
+import { TaskDetail } from './pages/TaskDetail';
 
 const AppContent = () => {
   const { loading, user } = useAuth();
@@ -27,6 +28,7 @@ const AppContent = () => {
       <Route path="/auth" element={<Auth />} />
       <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" replace />} />
       <Route path="/create-task" element={user ? <CreateTask /> : <Navigate to="/" replace />} />
+      <Route path="/task/:id" element={user ? <TaskDetail /> : <Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
