@@ -1,11 +1,27 @@
 import React from 'react';
-import { CreditCard, Shield } from 'lucide-react';
+import { CreditCard, Shield, CheckCircle } from 'lucide-react';
+import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 
 interface PaymentSectionProps {
   disabled?: boolean;
+  onPaymentMethodReady?: (isReady: boolean) => void;
 }
 
-export const PaymentSection: React.FC<PaymentSectionProps> = ({ disabled = false }) => {
+export const PaymentSection: React.FC<PaymentSectionProps> = ({
+  disabled = false,
+  onPaymentMethodReady
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isCardComplete, setIsCardComplete] = React.useState(false);
+  const [cardError, setCardError] = React.useState<string | null>(null);
+
+  const handleCardChange = (event: any) => {
+    setCardError(event.error ? event.error.message : null);
+    setIsCardComplete(event.complete);
+    onPaymentMethodReady?.(event.complete);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
       <div className="flex items-center gap-2 mb-4">
@@ -37,31 +53,37 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ disabled = false
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                カード番号
+                カード情報
               </label>
-              <div className="px-4 py-3 border border-slate-300 rounded-lg bg-slate-50">
-                <p className="text-slate-500 text-sm">Stripe決済は次フェーズで実装されます</p>
+              <div className="px-4 py-3 border border-slate-300 rounded-lg bg-white hover:border-blue-400 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 transition-all">
+                <CardElement
+                  options={{
+                    style: {
+                      base: {
+                        fontSize: '16px',
+                        color: '#0f172a',
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        '::placeholder': {
+                          color: '#94a3b8',
+                        },
+                      },
+                      invalid: {
+                        color: '#dc2626',
+                      },
+                    },
+                  }}
+                  onChange={handleCardChange}
+                />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  有効期限
-                </label>
-                <div className="px-4 py-3 border border-slate-300 rounded-lg bg-slate-50">
-                  <p className="text-slate-400 text-sm">MM/YY</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  CVC
-                </label>
-                <div className="px-4 py-3 border border-slate-300 rounded-lg bg-slate-50">
-                  <p className="text-slate-400 text-sm">123</p>
-                </div>
-              </div>
+              {cardError && (
+                <p className="text-red-600 text-sm mt-1">{cardError}</p>
+              )}
+              {isCardComplete && !cardError && (
+                <p className="text-green-600 text-sm mt-1 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  カード情報が正常に入力されました
+                </p>
+              )}
             </div>
           </div>
 

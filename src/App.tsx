@@ -1,10 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Landing } from './pages/Landing';
 import { Auth } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { CreateTask } from './pages/CreateTask';
 import { TaskDetail } from './pages/TaskDetail';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const AppContent = () => {
   const { loading, user } = useAuth();
@@ -38,7 +42,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <Elements stripe={stripePromise}>
+          <AppContent />
+        </Elements>
       </AuthProvider>
     </BrowserRouter>
   );
