@@ -52,23 +52,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('display_name')
-            .eq('id', session.user.id)
-            .maybeSingle();
+      (event, session) => {
+        (async () => {
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('display_name')
+              .eq('id', session.user.id)
+              .maybeSingle();
 
-          setUser({
-            uid: session.user.id,
-            email: session.user.email || '',
-            displayName: profile?.display_name || 'User',
-          });
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
+            setUser({
+              uid: session.user.id,
+              email: session.user.email || '',
+              displayName: profile?.display_name || 'User',
+            });
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        })();
       }
     );
 
