@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Task } from '../lib/supabase';
-import { Plus, LogOut, Zap } from 'lucide-react';
+import { Plus, LogOut, Zap, CreditCard } from 'lucide-react';
 import { TaskCard } from '../components/dashboard/TaskCard';
 
 type FilterType = 'all' | 'active' | 'completed' | 'failed';
@@ -14,6 +14,7 @@ export const Dashboard: React.FC = () => {
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [filter, setFilter] = React.useState<FilterType>('all');
   const [tasksLoading, setTasksLoading] = React.useState(true);
+  const [hasPaymentMethod, setHasPaymentMethod] = React.useState(false);
 
   React.useEffect(() => {
     if (!user) {
@@ -24,8 +25,25 @@ export const Dashboard: React.FC = () => {
   React.useEffect(() => {
     if (user) {
       fetchTasks();
+      checkPaymentMethod();
     }
   }, [user]);
+
+  const checkPaymentMethod = async () => {
+    if (!user) return;
+
+    try {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('stripe_payment_method_id')
+        .eq('id', user.uid)
+        .maybeSingle();
+
+      setHasPaymentMethod(!!data?.stripe_payment_method_id);
+    } catch (err) {
+      console.error('Error checking payment method:', err);
+    }
+  };
 
   const fetchTasks = async () => {
     if (!user) return;
@@ -96,12 +114,23 @@ export const Dashboard: React.FC = () => {
               <h1 className="text-2xl font-bold text-slate-900">朝活チャレンジ</h1>
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               <div className="hidden sm:block">
                 <p className="text-sm text-gray-600">
                   こんにちは、<span className="font-semibold text-slate-900">{user.displayName}</span>さん
                 </p>
               </div>
+              <button
+                onClick={() => navigate('/payment-setup')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  hasPaymentMethod
+                    ? 'text-slate-700 hover:bg-slate-100'
+                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300'
+                }`}
+              >
+                <CreditCard className="w-5 h-5" />
+                <span className="hidden sm:inline">{hasPaymentMethod ? 'カード管理' : 'カード登録'}</span>
+              </button>
               <button
                 onClick={handleSignOut}
                 disabled={loading}

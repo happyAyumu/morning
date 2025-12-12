@@ -1,21 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
+import { ArrowLeft, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { DestinationSection } from '../components/task/DestinationSection';
 import { DateTimeSection } from '../components/task/DateTimeSection';
 import { PenaltyAmountSection } from '../components/task/PenaltyAmountSection';
-import { PaymentSection } from '../components/task/PaymentSection';
 import { ConfirmationSection } from '../components/task/ConfirmationSection';
 import { PlaceLocation } from '../types/task';
 
 export const CreateTask: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const stripe = useStripe();
-  const elements = useElements();
 
   const [destination, setDestination] = React.useState<PlaceLocation | null>(null);
   const [targetDateTime, setTargetDateTime] = React.useState<Date | null>(null);
@@ -23,13 +19,34 @@ export const CreateTask: React.FC = () => {
   const [agreedToTerms, setAgreedToTerms] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [isPaymentMethodReady, setIsPaymentMethodReady] = React.useState(false);
+  const [paymentMethod, setPaymentMethod] = React.useState<any>(null);
+  const [loadingPaymentMethod, setLoadingPaymentMethod] = React.useState(true);
 
   React.useEffect(() => {
     if (!user) {
       navigate('/');
+    } else {
+      checkPaymentMethod();
     }
   }, [user, navigate]);
+
+  const checkPaymentMethod = async () => {
+    try {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('stripe_payment_method_id, payment_method_last4, payment_method_brand')
+        .eq('id', user?.uid)
+        .maybeSingle();
+
+      if (data && data.stripe_payment_method_id) {
+        setPaymentMethod(data);
+      }
+    } catch (err) {
+      console.error('Error checking payment method:', err);
+    } finally {
+      setLoadingPaymentMethod(false);
+    }
+  };
 
   const calculateGpsActivationTime = (targetDate: Date): Date => {
     return new Date(targetDate.getTime() - 6 * 60 * 60 * 1000);
@@ -41,13 +58,8 @@ export const CreateTask: React.FC = () => {
       return;
     }
 
-    if (!stripe || !elements) {
-      setError('決済システムの初期化中です。もう一度お試しください。');
-      return;
-    }
-
-    if (!isPaymentMethodReady) {
-      setError('カード情報を入力してください');
+    if (!paymentMethod) {
+      setError('カード情報を登録してください');
       return;
     }
 
@@ -55,40 +67,6 @@ export const CreateTask: React.FC = () => {
     setError(null);
 
     try {
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        throw new Error('カード情報が見つかりません');
-      }
-
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ amount: penaltyAmount }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Payment Intent の作成に失敗しました');
-      }
-
-      const { clientSecret, paymentIntentId } = await response.json();
-
-      const { error: confirmError, paymentIntent } = await stripe.confirmCardSetup(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-          },
-        }
-      );
-
-      if (confirmError) {
-        throw new Error(confirmError.message);
-      }
-
       const gpsActivationTime = calculateGpsActivationTime(targetDateTime);
 
       const { error: insertError } = await supabase.from('tasks').insert({
@@ -101,8 +79,8 @@ export const CreateTask: React.FC = () => {
         penalty_amount: penaltyAmount,
         gps_activation_time: gpsActivationTime.toISOString(),
         status: 'pending',
-        payment_intent_id: paymentIntentId,
-        payment_status: 'authorized',
+        stripe_payment_method_id: paymentMethod.stripe_payment_method_id,
+        payment_status: 'pending',
       });
 
       if (insertError) {
@@ -162,7 +140,53 @@ export const CreateTask: React.FC = () => {
             onAmountChange={setPenaltyAmount}
           />
 
-          <PaymentSection onPaymentMethodReady={setIsPaymentMethodReady} />
+          <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-bold text-slate-900">決済情報</h2>
+            </div>
+
+            {loadingPaymentMethod ? (
+              <div className="text-center py-4">
+                <div className="inline-block">
+                  <div className="w-6 h-6 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin"></div>
+                </div>
+                <p className="text-slate-600 mt-2 text-sm">読み込み中...</p>
+              </div>
+            ) : paymentMethod ? (
+              <div className="space-y-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-green-800 font-medium">登録済みカード</p>
+                  <p className="text-green-700 text-sm mt-1">
+                    {paymentMethod.payment_method_brand?.toUpperCase()} •••• {paymentMethod.payment_method_last4}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/payment-setup')}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  カード情報を変更
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800 font-medium">カード情報が未登録です</p>
+                  <p className="text-yellow-700 text-sm mt-1">
+                    タスクを作成するにはカード情報の登録が必要です
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/payment-setup')}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  カード情報を登録する
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </main>
 
