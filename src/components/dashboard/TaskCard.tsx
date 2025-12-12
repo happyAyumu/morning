@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { Task } from '../../lib/supabase';
+import { Task } from '../../types/task';
 
 interface TaskCardProps {
   task: Task;
@@ -35,8 +35,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const status = statusConfig[task.status];
   const StatusIcon = status.icon;
 
-  const formatDateTime = (dateString: Date) => {
-    const date = new Date(dateString);
+  const formatDateTime = (date: Date) => {
     return date.toLocaleString('ja-JP', {
       month: 'short',
       day: 'numeric',
@@ -54,11 +53,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <h3 className="text-xl font-bold text-slate-900 mb-1">
-            {task.destinationName}
+            {task.destination_name}
           </h3>
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <MapPin className="w-4 h-4" />
-            <span className="line-clamp-1">{task.destinationAddress}</span>
+            <span className="line-clamp-1">{task.destination_address}</span>
           </div>
         </div>
 
@@ -74,7 +73,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         <div className="flex items-center gap-2 text-slate-700">
           <Calendar className="w-4 h-4 text-blue-600" />
           <span className="text-sm">
-            目標: <span className="font-semibold">{formatDateTime(task.targetDateTime)}</span>
+            目標: <span className="font-semibold">{formatDateTime(new Date(task.target_date_time))}</span>
           </span>
         </div>
 
@@ -83,7 +82,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           <span className="text-sm text-slate-700">
             罰金額:
             <span className="text-lg font-bold text-red-600 ml-1">
-              ¥{task.penaltyAmount.toLocaleString()}
+              ¥{task.penalty_amount.toLocaleString()}
             </span>
           </span>
         </div>

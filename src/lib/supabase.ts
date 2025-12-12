@@ -12,19 +12,4 @@ export type User = {
   createdAt: Date;
 };
 
-export type Task = {
-  id: string;
-  userId: string;
-  destinationName: string;
-  destinationAddress: string;
-  destinationLat: number;
-  destinationLng: number;
-  targetDateTime: Date;
-  penaltyAmount: number;
-  stripePaymentMethodId: string | null;
-  stripePaymentIntentId: string | null;
-  gpsActivationTime: Date | null;
-  status: 'pending' | 'active' | 'completed' | 'failed';
-  createdAt: Date;
-  completedAt: Date | null;
-};
+export type { Task } from '../types/task';

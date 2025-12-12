@@ -41,23 +41,7 @@ export const Dashboard: React.FC = () => {
       if (error) throw error;
 
       if (data) {
-        const mappedTasks: Task[] = data.map((task) => ({
-          id: task.id,
-          userId: task.user_id,
-          destinationName: task.destination_name,
-          destinationAddress: task.destination_address,
-          destinationLat: task.destination_lat,
-          destinationLng: task.destination_lng,
-          targetDateTime: new Date(task.target_date_time),
-          penaltyAmount: task.penalty_amount,
-          stripePaymentMethodId: task.stripe_payment_method_id,
-          stripePaymentIntentId: task.stripe_payment_intent_id,
-          gpsActivationTime: task.gps_activation_time ? new Date(task.gps_activation_time) : null,
-          status: task.status,
-          createdAt: new Date(task.created_at),
-          completedAt: task.completed_at ? new Date(task.completed_at) : null,
-        }));
-        setTasks(mappedTasks);
+        setTasks(data as Task[]);
       }
     } catch (err) {
       console.error('Error fetching tasks:', err);
@@ -89,7 +73,7 @@ export const Dashboard: React.FC = () => {
     const failed = tasks.filter((t) => t.status === 'failed').length;
     const total = completed + failed;
     const achievementRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const totalPenalty = tasks.filter((t) => t.status === 'failed').reduce((sum, t) => sum + t.penaltyAmount, 0);
+    const totalPenalty = tasks.filter((t) => t.status === 'failed').reduce((sum, t) => sum + t.penalty_amount, 0);
 
     return {
       achievementRate,
