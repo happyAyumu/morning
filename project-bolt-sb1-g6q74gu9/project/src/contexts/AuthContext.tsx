@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type AuthUser = {
-  id: string;
+  uid: string;
   email: string;
   displayName: string;
 } | null;
@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle();
 
           setUser({
-            id: session.user.id,
+            uid: session.user.id,
             email: session.user.email || '',
             displayName: profile?.display_name || 'User',
           });
@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle();
 
           setUser({
-            id: session.user.id,
+            uid: session.user.id,
             email: session.user.email || '',
             displayName: profile?.display_name || 'User',
           });
@@ -97,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (profileError) throw profileError;
 
         setUser({
-          id: authData.user.id,
+          uid: authData.user.id,
           email,
           displayName,
         });
@@ -127,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
 
         setUser({
-          id: authUser.id,
+          uid: authUser.id,
           email: authUser.email || '',
           displayName: profile?.display_name || 'User',
         });

@@ -1,18 +1,70 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, LogOut, Zap, Clock } from 'lucide-react';
+import { supabase, Task } from '../lib/supabase';
+import { Plus, LogOut, Zap } from 'lucide-react';
+import { TaskCard } from '../components/dashboard/TaskCard';
+
+type FilterType = 'all' | 'active' | 'completed' | 'failed';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [loading, setLoading] = React.useState(false);
+  const [tasks, setTasks] = React.useState<Task[]>([]);
+  const [filter, setFilter] = React.useState<FilterType>('all');
+  const [tasksLoading, setTasksLoading] = React.useState(true);
 
   React.useEffect(() => {
     if (!user) {
       navigate('/');
     }
   }, [user, navigate]);
+
+  React.useEffect(() => {
+    if (user) {
+      fetchTasks();
+    }
+  }, [user]);
+
+  const fetchTasks = async () => {
+    if (!user) return;
+
+    try {
+      setTasksLoading(true);
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.uid)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const mappedTasks: Task[] = data.map((task) => ({
+          id: task.id,
+          userId: task.user_id,
+          destinationName: task.destination_name,
+          destinationAddress: task.destination_address,
+          destinationLat: task.destination_lat,
+          destinationLng: task.destination_lng,
+          targetDateTime: new Date(task.target_date_time),
+          penaltyAmount: task.penalty_amount,
+          stripePaymentMethodId: task.stripe_payment_method_id,
+          stripePaymentIntentId: task.stripe_payment_intent_id,
+          gpsActivationTime: task.gps_activation_time ? new Date(task.gps_activation_time) : null,
+          status: task.status,
+          createdAt: new Date(task.created_at),
+          completedAt: task.completed_at ? new Date(task.completed_at) : null,
+        }));
+        setTasks(mappedTasks);
+      }
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -25,6 +77,26 @@ export const Dashboard: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const filteredTasks = React.useMemo(() => {
+    if (filter === 'all') return tasks;
+    if (filter === 'active') return tasks.filter((t) => t.status === 'pending' || t.status === 'active');
+    return tasks.filter((t) => t.status === filter);
+  }, [tasks, filter]);
+
+  const stats = React.useMemo(() => {
+    const completed = tasks.filter((t) => t.status === 'completed').length;
+    const failed = tasks.filter((t) => t.status === 'failed').length;
+    const total = completed + failed;
+    const achievementRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const totalPenalty = tasks.filter((t) => t.status === 'failed').reduce((sum, t) => sum + t.penaltyAmount, 0);
+
+    return {
+      achievementRate,
+      streak: 0,
+      totalPenalty,
+    };
+  }, [tasks]);
 
   if (!user) {
     return null;
@@ -62,37 +134,102 @@ export const Dashboard: React.FC = () => {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-md p-8 border border-slate-200">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">
-                今日のタスク
-              </h2>
-              <p className="text-slate-600 mb-8">
-                タスクはまだ作成されていません。下のボタンから新しいタスクを作成してください。
-              </p>
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-200">
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">タスク一覧</h2>
 
-              <div className="space-y-4">
-                {/* Task list will appear here in future phases */}
+                <div className="flex gap-2 overflow-x-auto">
+                  <button
+                    onClick={() => setFilter('all')}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${
+                      filter === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    すべて ({tasks.length})
+                  </button>
+                  <button
+                    onClick={() => setFilter('active')}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${
+                      filter === 'active'
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    進行中 ({tasks.filter((t) => t.status === 'pending' || t.status === 'active').length})
+                  </button>
+                  <button
+                    onClick={() => setFilter('completed')}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${
+                      filter === 'completed'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    完了 ({tasks.filter((t) => t.status === 'completed').length})
+                  </button>
+                  <button
+                    onClick={() => setFilter('failed')}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${
+                      filter === 'failed'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    失敗 ({tasks.filter((t) => t.status === 'failed').length})
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {tasksLoading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block">
+                      <div className="w-8 h-8 border-4 border-slate-300 border-t-blue-600 rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-slate-600 mt-4">読み込み中...</p>
+                  </div>
+                ) : filteredTasks.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-slate-600 mb-4">
+                      {filter === 'all'
+                        ? 'タスクはまだ作成されていません。'
+                        : `${
+                            filter === 'active'
+                              ? '進行中'
+                              : filter === 'completed'
+                              ? '完了した'
+                              : '失敗した'
+                          }タスクはありません。`}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {filteredTasks.map((task) => (
+                      <TaskCard key={task.id} task={task} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-md p-8 border border-slate-200 h-full">
-              <h3 className="text-lg font-bold text-slate-900 mb-4">
-                統計情報
-              </h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-4">統計情報</h3>
               <div className="space-y-4">
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <p className="text-sm text-blue-600 font-medium">達成率</p>
-                  <p className="text-3xl font-bold text-blue-700">0%</p>
+                  <p className="text-3xl font-bold text-blue-700">{stats.achievementRate}%</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                   <p className="text-sm text-green-600 font-medium">連続達成日数</p>
-                  <p className="text-3xl font-bold text-green-700">0日</p>
+                  <p className="text-3xl font-bold text-green-700">{stats.streak}日</p>
                 </div>
                 <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
                   <p className="text-sm text-orange-600 font-medium">ペナルティ総額</p>
-                  <p className="text-3xl font-bold text-orange-700">¥0</p>
+                  <p className="text-3xl font-bold text-orange-700">¥{stats.totalPenalty.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -100,39 +237,12 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <button
-          className="w-full lg:w-auto flex items-center justify-center gap-3 px-8 py-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-lg rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105 shadow-lg mb-12"
+          onClick={() => navigate('/create-task')}
+          className="w-full lg:w-auto flex items-center justify-center gap-3 px-8 py-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-lg rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105 shadow-lg"
         >
           <Plus className="w-6 h-6" />
           新しいタスクを作成
         </button>
-
-        <div className="bg-white rounded-xl shadow-md p-8 border border-slate-200">
-          <div className="flex items-start gap-4">
-            <Clock className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="font-semibold text-slate-900 mb-2">
-                朝活を始める準備はできていますか？
-              </h3>
-              <p className="text-slate-600 mb-4">
-                毎日のタスク設定により、あなたの朝の時間が変わります。明確な目標を設定し、自分自身に強制力を持たせることで、真の習慣化が実現します。
-              </p>
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                  行き先と到着時間を明確に設定
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                  達成できなかった場合のペナルティを設定
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                  GPS機能で自動検証
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   );
