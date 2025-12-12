@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { GoogleMap, Marker, Circle, useJsApiLoader } from '@react-google-maps/api';
-import { MapPin, Navigation, AlertCircle } from 'lucide-react';
+import { MapPin, Navigation, AlertCircle, ArrowLeft, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Task } from '../types/task';
 import { CountdownTimer } from '../components/task/CountdownTimer';
@@ -24,6 +24,8 @@ export function TaskDetail() {
   const [gpsStatus, setGpsStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -127,6 +129,40 @@ export function TaskDetail() {
     navigate('/dashboard');
   };
 
+  const handleBack = () => {
+    navigate('/dashboard');
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!task) return;
+
+    setIsDeleting(true);
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', task.id);
+
+      if (error) throw error;
+
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('タスクの削除に失敗しました');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+  };
+
   if (!task) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -150,6 +186,22 @@ export function TaskDetail() {
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white shadow-sm border-b border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">戻る</span>
+            </button>
+            <button
+              onClick={handleDeleteClick}
+              className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span className="text-sm font-medium">削除</span>
+            </button>
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             {task.destination_name}
           </h1>
@@ -290,6 +342,38 @@ export function TaskDetail() {
       </div>
 
       {showSuccessModal && <SuccessModal onClose={handleSuccessModalClose} />}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">タスクを削除しますか？</h2>
+            </div>
+            <p className="text-gray-600 mb-6">
+              この操作は取り消せません。本当にこのタスクを削除してもよろしいですか？
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="flex-1 py-3 px-4 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? '削除中...' : '削除する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
