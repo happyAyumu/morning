@@ -9,7 +9,8 @@ import { CreateTask } from './pages/CreateTask';
 import { TaskDetail } from './pages/TaskDetail';
 import { PaymentSetup } from './pages/PaymentSetup';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const AppContent = () => {
   const { loading, user } = useAuth();
@@ -44,9 +45,13 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Elements stripe={stripePromise}>
+        {stripePromise ? (
+          <Elements stripe={stripePromise}>
+            <AppContent />
+          </Elements>
+        ) : (
           <AppContent />
-        </Elements>
+        )}
       </AuthProvider>
     </BrowserRouter>
   );
